@@ -161,10 +161,106 @@ Critical issues only:
 ```
 
 ## Project-Specific Functional Specifications
-[Paste your functional specs here]
+
+### Functional Specifications - Simple ToDo App
+
+#### Overview
+A minimalist ToDo application that allows users to manage basic task items with essential CRUD operations (Create, Read, Delete) and simple state tracking.
+
+### Core Entities
+
+#### ToDoItem
+- **Description**: String field containing the task description (required, max 255 characters)
+- **State**: Enumerated field with exactly three possible values:
+  - `"new"` - Default state for newly created items
+  - `"in progress"` - Item is being worked on
+  - `"done"` - Item has been completed
+
+### Functional Requirements
+
+#### 1. Create ToDo Item
+- **Action**: Add a new task to the system
+- **Input**: Task description (string, required)
+- **Behavior**: 
+  - Create new ToDoItem with provided description
+  - Set initial state to `"new"`
+  - Add item to the active list
+- **Validation**: Description cannot be empty or whitespace-only
+
+#### 2. List ToDo Items
+- **Action**: Display all existing tasks
+- **Output**: Complete list of all ToDoItems showing:
+  - Task description
+  - Current state
+- **Behavior**: 
+  - Show all items regardless of state
+  - Display in order of creation (newest first recommended)
+  - Empty list should display appropriate message
+
+#### 3. Delete ToDo Item
+- **Action**: Remove a task from the system
+- **Input**: Item identifier or selection mechanism
+- **Behavior**: 
+  - Permanently remove the selected item
+  - No confirmation dialog required (keep it simple)
+  - Item cannot be recovered after deletion
+
+#### 4. Update Item State
+- **Action**: Change the status of an existing task
+- **Input**: Item identifier and new state value
+- **Behavior**:
+  - Update item state to one of the three allowed values
+  - State transitions are unrestricted (any state can change to any other state)
+- **Validation**: New state must be one of: `"new"`, `"in progress"`, `"done"`
+
+### Non-Functional Requirements
+
+#### Simplicity Constraints
+- No user authentication or multi-user support
+- No due dates, priorities, or categories
+- No data persistence requirements specified (implementation choice)
+- No search or filter functionality
+- No bulk operations (select all, delete multiple, etc.)
+- No item editing (description cannot be modified after creation)
+
+#### User Interface
+- Should be intuitive and require minimal learning
+- Clear visual distinction between different item states
+- Simple interaction patterns (click, tap, or basic form submission)
+
+### Edge Cases & Error Handling
+- Empty description submission should be rejected with clear feedback
+- Attempting to delete non-existent item should fail gracefully
+- Invalid state transitions should be prevented with appropriate messaging
+- Application should handle empty list state appropriately
+
+### Success Criteria
+- User can create a new task with description
+- User can view all tasks and their current states
+- User can change any task's state between the three options
+- User can delete any task permanently
+- Application maintains data integrity throughout all operations
 
 ## Project-Specific Technical Specifications  
-[Paste your technical specs here]
+### Framework & Runtime
+.NET 9 Console Application
+Target Framework: net9.0
+Entry Point: Main() method
+
+### Dependencies
+Spectre.Console: For colored console output
+System.Text.Json: For JSON serialization (built-in)
+
+### Data Storage
+Format: JSON file
+Location: Program directory (todos.json)
+Persistence: File-based, no database
+
+### Application Type
+Console application with colored text output
+Single-user, local execution
+Command-line interface
+
 
 ## Integration Rules
 When generating code:
