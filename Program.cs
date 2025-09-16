@@ -291,7 +291,109 @@ internal class Program
     private static async Task DeleteTaskAsync()
     {
         AnsiConsole.MarkupLine("[red]🗑️ Delete Task[/]");
-        AnsiConsole.MarkupLine("[dim]This feature will be implemented soon...[/]");
+        AnsiConsole.WriteLine();
+        
+        // Handle empty todo list case
+        if (_todos.Count == 0)
+        {
+            AnsiConsole.MarkupLine("[dim]No tasks found. Add some tasks first to delete them![/]");
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine("[dim]Press any key to continue...[/]");
+            
+            try
+            {
+                Console.ReadKey();
+            }
+            catch (InvalidOperationException)
+            {
+                Thread.Sleep(2000);
+            }
+            return;
+        }
+        
+        try
+        {
+            // Display available tasks for deletion
+            AnsiConsole.MarkupLine($"[dim]Found {_todos.Count} task(s) available for deletion:[/]");
+            AnsiConsole.WriteLine();
+            
+            // Display tasks in order (newest first - same as ViewAllTasksAsync)
+            for (int i = _todos.Count - 1; i >= 0; i--)
+            {
+                var todo = _todos[i];
+                var taskNumber = _todos.Count - i; // Number from 1 to count (newest = 1)
+                
+                // Format task display with state-based coloring
+                string stateDisplay = GetStateDisplayText(todo.State);
+                string taskLine = $"{taskNumber}. {stateDisplay} {EscapeMarkup(todo.Description)}";
+                
+                AnsiConsole.MarkupLine(taskLine);
+            }
+            
+            AnsiConsole.WriteLine();
+            
+            // Get user input for task selection
+            bool validInput = false;
+            
+            while (!validInput)
+            {
+                try
+                {
+                    int selectedTaskNumber = AnsiConsole.Ask<int>(
+                        $"[yellow]Enter the number of the task to delete (1-{_todos.Count}):[/]");
+                    
+                    // Validate input range
+                    if (selectedTaskNumber < 1 || selectedTaskNumber > _todos.Count)
+                    {
+                        AnsiConsole.MarkupLine($"[red]Error: Please enter a number between 1 and {_todos.Count}.[/]");
+                        AnsiConsole.WriteLine();
+                        continue;
+                    }
+                    
+                    // Convert task number to list index (reverse order)
+                    int todoIndex = _todos.Count - selectedTaskNumber;
+                    var todoToDelete = _todos[todoIndex];
+                    
+                    // Perform deletion
+                    _todos.RemoveAt(todoIndex);
+                    
+                    // Save changes to file
+                    AnsiConsole.MarkupLine("[dim]Saving changes...[/]");
+                    await _dataService.SaveTodosAsync(_todos);
+                    
+                    // Success feedback
+                    AnsiConsole.MarkupLine("[green]✅ Task deleted successfully![/]");
+                    AnsiConsole.MarkupLine($"[dim]Deleted task: \"{todoToDelete.Description}\"[/]");
+                    AnsiConsole.MarkupLine($"[dim]Status was: {todoToDelete.State}[/]");
+                    AnsiConsole.MarkupLine($"[dim]Remaining tasks: {_todos.Count}[/]");
+                    
+                    validInput = true;
+                }
+                catch (FormatException)
+                {
+                    AnsiConsole.MarkupLine("[red]Error: Please enter a valid number.[/]");
+                    AnsiConsole.WriteLine();
+                }
+                catch (Exception ex)
+                {
+                    AnsiConsole.MarkupLine($"[red]Error reading input: {ex.Message}[/]");
+                    AnsiConsole.MarkupLine("[dim]Please try again...[/]");
+                    AnsiConsole.WriteLine();
+                }
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            AnsiConsole.MarkupLine($"[red]Error saving changes: {ex.Message}[/]");
+            AnsiConsole.MarkupLine("[yellow]The task may have been removed from memory but not saved to file.[/]");
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]Unexpected error: {ex.Message}[/]");
+            AnsiConsole.MarkupLine("[yellow]Please try again.[/]");
+        }
+        
+        AnsiConsole.WriteLine();
         AnsiConsole.MarkupLine("[dim]Press any key to continue...[/]");
         
         try
