@@ -115,6 +115,7 @@ internal class Program
     private static async Task ViewAllTasksAsync()
     {
         AnsiConsole.MarkupLine("[blue]📋 View All Tasks[/]");
+        AnsiConsole.WriteLine();
         
         if (_todos.Count == 0)
         {
@@ -123,10 +124,23 @@ internal class Program
         else
         {
             AnsiConsole.MarkupLine($"[dim]Found {_todos.Count} task(s):[/]");
-            // TODO: Display actual tasks here
-            AnsiConsole.MarkupLine("[dim]Task display will be implemented soon...[/]");
+            AnsiConsole.WriteLine();
+            
+            // Display tasks in order (newest first - reverse iteration since Add appends to end)
+            for (int i = _todos.Count - 1; i >= 0; i--)
+            {
+                var todo = _todos[i];
+                var taskNumber = _todos.Count - i; // Number from 1 to count (newest = 1)
+                
+                // Format task display with state-based coloring
+                string stateDisplay = GetStateDisplayText(todo.State);
+                string taskLine = $"{taskNumber}. {stateDisplay} {EscapeMarkup(todo.Description)}";
+                
+                AnsiConsole.MarkupLine(taskLine);
+            }
         }
         
+        AnsiConsole.WriteLine();
         AnsiConsole.MarkupLine("[dim]Press any key to continue...[/]");
         
         try
@@ -137,6 +151,23 @@ internal class Program
         {
             Thread.Sleep(2000);
         }
+    }
+    
+    private static string GetStateDisplayText(ToDoState state)
+    {
+        return state switch
+        {
+            ToDoState.New => "[white][[New]][/]",
+            ToDoState.InProgress => "[yellow][[In Progress]][/]",
+            ToDoState.Done => "[green]✅ [[Done]][/]",
+            _ => "[dim][[Unknown]][/]"
+        };
+    }
+    
+    private static string EscapeMarkup(string text)
+    {
+        // Escape any markup characters in the task description to prevent formatting issues
+        return text.Replace("[", "[[").Replace("]", "]]");
     }
     
     private static async Task AddNewTaskAsync()
