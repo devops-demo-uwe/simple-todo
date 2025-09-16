@@ -499,79 +499,85 @@ internal class Program
         
         try
         {
-            // Display available tasks for deletion
-            AnsiConsole.MarkupLine($"[dim]Found {_todos.Count} task(s) available for deletion:[/]");
+            // Display available tasks for selection
+            AnsiConsole.MarkupLine($"[dim]Found {_todos.Count} task(s). Select a task to delete:[/]");
             AnsiConsole.WriteLine();
             
-            // Display tasks in order (newest first - same as ViewAllTasksAsync)
+            // Create list of task choices for user selection
+            var taskChoices = new List<string>();
             for (int i = _todos.Count - 1; i >= 0; i--)
             {
                 var todo = _todos[i];
                 var taskNumber = _todos.Count - i; // Number from 1 to count (newest = 1)
-                
-                // Format task display with state-based coloring
-                string stateDisplay = GetStateDisplayText(todo.State);
-                string taskLine = $"{taskNumber}. {stateDisplay} {EscapeMarkup(todo.Description)}";
-                
-                AnsiConsole.MarkupLine(taskLine);
+                var stateDisplay = GetStateDisplayText(todo.State);
+                var taskChoice = $"{taskNumber}. {stateDisplay} {EscapeMarkup(todo.Description)}";
+                taskChoices.Add(taskChoice);
             }
             
-            AnsiConsole.WriteLine();
+            // Add cancel option
+            taskChoices.Add("🚫 Cancel - Return to main menu");
             
-            // Get user input for task selection
-            bool validInput = false;
+            // Prompt user to select a task
+            string selectedTaskChoice = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title("[yellow]Select a task to delete:[/]")
+                    .PageSize(Math.Min(taskChoices.Count, 10))
+                    .AddChoices(taskChoices));
             
-            while (!validInput)
+            // Handle cancellation
+            if (selectedTaskChoice.StartsWith("🚫"))
             {
+                AnsiConsole.MarkupLine("[dim]Delete operation cancelled.[/]");
+                return;
+            }
+            
+            // Extract task number from selection
+            var taskNumberText = selectedTaskChoice.Split('.')[0];
+            if (!int.TryParse(taskNumberText, out int selectedTaskNumber) || 
+                selectedTaskNumber < 1 || selectedTaskNumber > _todos.Count)
+            {
+                AnsiConsole.MarkupLine("[red]Error: Invalid task selection.[/]");
+                AnsiConsole.WriteLine();
+                AnsiConsole.MarkupLine("[dim]Press any key to continue...[/]");
+                
                 try
                 {
-                    int selectedTaskNumber = AnsiConsole.Ask<int>(
-                        $"[yellow]Enter the number of the task to delete (1-{_todos.Count}):[/]");
-                    
-                    // Validate input range
-                    if (selectedTaskNumber < 1 || selectedTaskNumber > _todos.Count)
-                    {
-                        AnsiConsole.MarkupLine($"[red]Error: Please enter a number between 1 and {_todos.Count}.[/]");
-                        AnsiConsole.WriteLine();
-                        continue;
-                    }
-                    
-                    // Convert task number to list index (reverse order)
-                    int todoIndex = _todos.Count - selectedTaskNumber;
-                    var todoToDelete = _todos[todoIndex];
-                    
-                    // Perform deletion
-                    _todos.RemoveAt(todoIndex);
-                    
-                    // Save changes to file
-                    AnsiConsole.MarkupLine("[dim]Saving changes...[/]");
-                    await _dataService.SaveTodosAsync(_todos);
-                    
-                    // Success feedback
-                    AnsiConsole.MarkupLine("[green]✅ Task deleted successfully![/]");
-                    AnsiConsole.MarkupLine($"[dim]Deleted task: \"{todoToDelete.Description}\"[/]");
-                    AnsiConsole.MarkupLine($"[dim]Status was: {todoToDelete.State}[/]");
-                    AnsiConsole.MarkupLine($"[dim]Remaining tasks: {_todos.Count}[/]");
-                    
-                    validInput = true;
+                    Console.ReadKey();
                 }
-                catch (FormatException)
+                catch (InvalidOperationException)
                 {
-                    AnsiConsole.MarkupLine("[red]Error: Please enter a valid number.[/]");
-                    AnsiConsole.WriteLine();
+                    Thread.Sleep(2000);
                 }
-                catch (Exception ex)
-                {
-                    AnsiConsole.MarkupLine($"[red]Error reading input: {ex.Message}[/]");
-                    AnsiConsole.MarkupLine("[dim]Please try again...[/]");
-                    AnsiConsole.WriteLine();
-                }
+                return;
             }
+            
+            // Calculate actual array index (reverse order display)
+            int actualIndex = _todos.Count - selectedTaskNumber;
+            var selectedTask = _todos[actualIndex];
+            
+            // Perform deletion
+            _todos.RemoveAt(actualIndex);
+            
+            // Save changes to file
+            AnsiConsole.MarkupLine("[dim]Saving changes...[/]");
+            await _dataService.SaveTodosAsync(_todos);
+            
+            // Success feedback
+            AnsiConsole.MarkupLine("[green]✅ Task deleted successfully![/]");
+            AnsiConsole.MarkupLine($"[dim]Deleted task: \"{EscapeMarkup(selectedTask.Description)}\"[/]");
+            AnsiConsole.MarkupLine($"[dim]Status was: {selectedTask.State}[/]");
+            AnsiConsole.MarkupLine($"[dim]Remaining tasks: {_todos.Count}[/]");
         }
         catch (InvalidOperationException ex)
         {
             AnsiConsole.MarkupLine($"[red]Error saving changes: {ex.Message}[/]");
             AnsiConsole.MarkupLine("[yellow]The task may have been removed from memory but not saved to file.[/]");
+        }
+        catch (NotSupportedException)
+        {
+            // Handle case when running in non-interactive terminal
+            AnsiConsole.MarkupLine("[yellow]Note: Interactive menus not available in this terminal mode.[/]");
+            AnsiConsole.MarkupLine("[dim]Delete operation cancelled.[/]");
         }
         catch (Exception ex)
         {
