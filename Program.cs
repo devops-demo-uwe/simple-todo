@@ -4,23 +4,59 @@ namespace SimpleTodo;
 
 internal class Program
 {
-    static void Main(string[] args)
+    // Static instances for data service and runtime todo storage
+    private static readonly ToDoDataService _dataService = new();
+    private static List<ToDoItem> _todos = new();
+
+    static async Task Main(string[] args)
     {
         AnsiConsole.MarkupLine("[bold blue]Simple ToDo Application[/]");
         AnsiConsole.WriteLine("Welcome to your personal task manager!");
+        
+        // Load existing todos on startup
+        await LoadTodosOnStartup();
+        
         AnsiConsole.WriteLine();
         
         // Main application loop
         bool continueRunning = true;
         while (continueRunning)
         {
-            continueRunning = ShowMainMenu();
+            continueRunning = await ShowMainMenuAsync();
         }
         
         AnsiConsole.MarkupLine("[green]Thank you for using Simple ToDo![/]");
     }
     
-    private static bool ShowMainMenu()
+    private static async Task LoadTodosOnStartup()
+    {
+        try
+        {
+            AnsiConsole.MarkupLine("[dim]Loading existing tasks...[/]");
+            _todos = await _dataService.LoadTodosAsync();
+            
+            if (_todos.Count > 0)
+            {
+                AnsiConsole.MarkupLine($"[dim]Loaded {_todos.Count} existing task(s).[/]");
+            }
+            else if (_dataService.DataFileExists)
+            {
+                AnsiConsole.MarkupLine("[dim]No existing tasks found.[/]");
+            }
+            else
+            {
+                AnsiConsole.MarkupLine("[dim]Starting with empty task list.[/]");
+            }
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]Warning: Could not load existing tasks: {ex.Message}[/]");
+            AnsiConsole.MarkupLine("[dim]Starting with empty task list.[/]");
+            _todos = new List<ToDoItem>();
+        }
+    }
+    
+    private static async Task<bool> ShowMainMenuAsync()
     {
         AnsiConsole.WriteLine();
         
@@ -38,7 +74,7 @@ internal class Program
                         "🚪 Exit application"
                     }));
             
-            return HandleMenuChoice(choice);
+            return await HandleMenuChoiceAsync(choice);
         }
         catch (NotSupportedException)
         {
@@ -50,21 +86,21 @@ internal class Program
         }
     }
     
-    private static bool HandleMenuChoice(string choice)
+    private static async Task<bool> HandleMenuChoiceAsync(string choice)
     {
         switch (choice)
         {
             case "📋 View all tasks":
-                ViewAllTasks();
+                await ViewAllTasksAsync();
                 break;
             case "➕ Add new task":
-                AddNewTask();
+                await AddNewTaskAsync();
                 break;
             case "✏️ Update task status":
-                UpdateTaskStatus();
+                await UpdateTaskStatusAsync();
                 break;
             case "🗑️ Delete task":
-                DeleteTask();
+                await DeleteTaskAsync();
                 break;
             case "🚪 Exit application":
                 return false; // Exit the loop
@@ -76,10 +112,21 @@ internal class Program
         return true; // Continue the loop
     }
     
-    private static void ViewAllTasks()
+    private static async Task ViewAllTasksAsync()
     {
         AnsiConsole.MarkupLine("[blue]📋 View All Tasks[/]");
-        AnsiConsole.MarkupLine("[dim]This feature will be implemented soon...[/]");
+        
+        if (_todos.Count == 0)
+        {
+            AnsiConsole.MarkupLine("[dim]No tasks found. Add some tasks to get started![/]");
+        }
+        else
+        {
+            AnsiConsole.MarkupLine($"[dim]Found {_todos.Count} task(s):[/]");
+            // TODO: Display actual tasks here
+            AnsiConsole.MarkupLine("[dim]Task display will be implemented soon...[/]");
+        }
+        
         AnsiConsole.MarkupLine("[dim]Press any key to continue...[/]");
         
         try
@@ -92,7 +139,7 @@ internal class Program
         }
     }
     
-    private static void AddNewTask()
+    private static async Task AddNewTaskAsync()
     {
         AnsiConsole.MarkupLine("[green]➕ Add New Task[/]");
         AnsiConsole.MarkupLine("[dim]This feature will be implemented soon...[/]");
@@ -108,7 +155,7 @@ internal class Program
         }
     }
     
-    private static void UpdateTaskStatus()
+    private static async Task UpdateTaskStatusAsync()
     {
         AnsiConsole.MarkupLine("[yellow]✏️ Update Task Status[/]");
         AnsiConsole.MarkupLine("[dim]This feature will be implemented soon...[/]");
@@ -124,7 +171,7 @@ internal class Program
         }
     }
     
-    private static void DeleteTask()
+    private static async Task DeleteTaskAsync()
     {
         AnsiConsole.MarkupLine("[red]🗑️ Delete Task[/]");
         AnsiConsole.MarkupLine("[dim]This feature will be implemented soon...[/]");
