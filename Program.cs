@@ -275,7 +275,193 @@ internal class Program
     private static async Task UpdateTaskStatusAsync()
     {
         AnsiConsole.MarkupLine("[yellow]✏️ Update Task Status[/]");
-        AnsiConsole.MarkupLine("[dim]This feature will be implemented soon...[/]");
+        AnsiConsole.WriteLine();
+        
+        // Check if there are any tasks to update
+        if (_todos.Count == 0)
+        {
+            AnsiConsole.MarkupLine("[dim]No tasks found. Add some tasks first before updating their status![/]");
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine("[dim]Press any key to continue...[/]");
+            
+            try
+            {
+                Console.ReadKey();
+            }
+            catch (InvalidOperationException)
+            {
+                Thread.Sleep(2000);
+            }
+            return;
+        }
+        
+        try
+        {
+            // Display available tasks for selection
+            AnsiConsole.MarkupLine($"[dim]Found {_todos.Count} task(s). Select a task to update:[/]");
+            AnsiConsole.WriteLine();
+            
+            // Create list of task choices for user selection
+            var taskChoices = new List<string>();
+            for (int i = _todos.Count - 1; i >= 0; i--)
+            {
+                var todo = _todos[i];
+                var taskNumber = _todos.Count - i; // Number from 1 to count (newest = 1)
+                var stateDisplay = GetStateDisplayText(todo.State);
+                var taskChoice = $"{taskNumber}. {stateDisplay} {EscapeMarkup(todo.Description)}";
+                taskChoices.Add(taskChoice);
+            }
+            
+            // Add cancel option
+            taskChoices.Add("🚫 Cancel - Return to main menu");
+            
+            // Prompt user to select a task
+            string selectedTaskChoice = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title("[yellow]Select a task to update:[/]")
+                    .PageSize(Math.Min(taskChoices.Count, 10))
+                    .AddChoices(taskChoices));
+            
+            // Handle cancellation
+            if (selectedTaskChoice.StartsWith("🚫"))
+            {
+                AnsiConsole.MarkupLine("[dim]Update cancelled.[/]");
+                return;
+            }
+            
+            // Extract task number from selection
+            var taskNumberText = selectedTaskChoice.Split('.')[0];
+            if (!int.TryParse(taskNumberText, out int selectedTaskNumber) || 
+                selectedTaskNumber < 1 || selectedTaskNumber > _todos.Count)
+            {
+                AnsiConsole.MarkupLine("[red]Error: Invalid task selection.[/]");
+                AnsiConsole.WriteLine();
+                AnsiConsole.MarkupLine("[dim]Press any key to continue...[/]");
+                
+                try
+                {
+                    Console.ReadKey();
+                }
+                catch (InvalidOperationException)
+                {
+                    Thread.Sleep(2000);
+                }
+                return;
+            }
+            
+            // Calculate actual array index (reverse order display)
+            int actualIndex = _todos.Count - selectedTaskNumber;
+            var selectedTask = _todos[actualIndex];
+            
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine($"[dim]Selected task: \"{EscapeMarkup(selectedTask.Description)}\"[/]");
+            AnsiConsole.MarkupLine($"[dim]Current status: {selectedTask.State}[/]");
+            AnsiConsole.WriteLine();
+            
+            // Present state options for selection
+            var stateChoices = new List<string>
+            {
+                "🆕 New - Task is newly created",
+                "⏳ In Progress - Currently working on this task", 
+                "✅ Done - Task has been completed",
+                "🚫 Cancel - Keep current status"
+            };
+            
+            string selectedStateChoice = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title("[yellow]Select new status:[/]")
+                    .PageSize(stateChoices.Count)
+                    .AddChoices(stateChoices));
+            
+            // Handle cancellation
+            if (selectedStateChoice.StartsWith("🚫"))
+            {
+                AnsiConsole.MarkupLine("[dim]Status update cancelled.[/]");
+                return;
+            }
+            
+            // Determine new state based on selection
+            ToDoState newState;
+            if (selectedStateChoice.StartsWith("🆕"))
+            {
+                newState = ToDoState.New;
+            }
+            else if (selectedStateChoice.StartsWith("⏳"))
+            {
+                newState = ToDoState.InProgress;
+            }
+            else if (selectedStateChoice.StartsWith("✅"))
+            {
+                newState = ToDoState.Done;
+            }
+            else
+            {
+                AnsiConsole.MarkupLine("[red]Error: Invalid state selection.[/]");
+                AnsiConsole.WriteLine();
+                AnsiConsole.MarkupLine("[dim]Press any key to continue...[/]");
+                
+                try
+                {
+                    Console.ReadKey();
+                }
+                catch (InvalidOperationException)
+                {
+                    Thread.Sleep(2000);
+                }
+                return;
+            }
+            
+            // Check if state is actually changing
+            if (selectedTask.State == newState)
+            {
+                AnsiConsole.MarkupLine($"[yellow]Task is already in '{newState}' status. No changes made.[/]");
+                AnsiConsole.WriteLine();
+                AnsiConsole.MarkupLine("[dim]Press any key to continue...[/]");
+                
+                try
+                {
+                    Console.ReadKey();
+                }
+                catch (InvalidOperationException)
+                {
+                    Thread.Sleep(2000);
+                }
+                return;
+            }
+            
+            // Store old state for confirmation
+            var oldState = selectedTask.State;
+            
+            // Update the task state
+            selectedTask.State = newState;
+            
+            // Save changes to file
+            AnsiConsole.MarkupLine("[dim]Saving changes...[/]");
+            await _dataService.SaveTodosAsync(_todos);
+            
+            // Success confirmation
+            AnsiConsole.MarkupLine("[green]✅ Task status updated successfully![/]");
+            AnsiConsole.MarkupLine($"[dim]Task: \"{EscapeMarkup(selectedTask.Description)}\"[/]");
+            AnsiConsole.MarkupLine($"[dim]Status changed: {oldState} → {newState}[/]");
+        }
+        catch (InvalidOperationException ex)
+        {
+            AnsiConsole.MarkupLine($"[red]Error saving changes: {ex.Message}[/]");
+            AnsiConsole.MarkupLine("[yellow]The status change may not have been saved to file.[/]");
+        }
+        catch (NotSupportedException)
+        {
+            // Handle case when running in non-interactive terminal
+            AnsiConsole.MarkupLine("[yellow]Note: Interactive menus not available in this terminal mode.[/]");
+            AnsiConsole.MarkupLine("[dim]Status update cancelled.[/]");
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]Unexpected error: {ex.Message}[/]");
+            AnsiConsole.MarkupLine("[yellow]Please try again.[/]");
+        }
+        
+        AnsiConsole.WriteLine();
         AnsiConsole.MarkupLine("[dim]Press any key to continue...[/]");
         
         try
