@@ -142,7 +142,93 @@ internal class Program
     private static async Task AddNewTaskAsync()
     {
         AnsiConsole.MarkupLine("[green]➕ Add New Task[/]");
-        AnsiConsole.MarkupLine("[dim]This feature will be implemented soon...[/]");
+        AnsiConsole.WriteLine();
+        
+        try
+        {
+            // Prompt user for task description with validation
+            string description = string.Empty;
+            bool validInput = false;
+            
+            while (!validInput)
+            {
+                try
+                {
+                    description = AnsiConsole.Ask<string>(
+                        "[yellow]Enter task description (max 255 characters):[/]");
+                    
+                    // Validate input
+                    if (string.IsNullOrWhiteSpace(description))
+                    {
+                        AnsiConsole.MarkupLine("[red]Error: Task description cannot be empty. Please try again.[/]");
+                        AnsiConsole.WriteLine();
+                        continue;
+                    }
+                    
+                    if (description.Length > 255)
+                    {
+                        AnsiConsole.MarkupLine($"[red]Error: Task description is too long ({description.Length} characters). Maximum allowed is 255 characters.[/]");
+                        AnsiConsole.WriteLine();
+                        continue;
+                    }
+                    
+                    validInput = true;
+                }
+                catch (Exception ex)
+                {
+                    AnsiConsole.MarkupLine($"[red]Error reading input: {ex.Message}[/]");
+                    AnsiConsole.MarkupLine("[dim]Please try again...[/]");
+                    AnsiConsole.WriteLine();
+                }
+            }
+            
+            // Create new todo item
+            ToDoItem newTodo;
+            try
+            {
+                newTodo = new ToDoItem(description, ToDoState.New);
+            }
+            catch (ArgumentException ex)
+            {
+                AnsiConsole.MarkupLine($"[red]Error: {ex.Message}[/]");
+                AnsiConsole.MarkupLine("[dim]Press any key to continue...[/]");
+                
+                try
+                {
+                    Console.ReadKey();
+                }
+                catch (InvalidOperationException)
+                {
+                    Thread.Sleep(2000);
+                }
+                return;
+            }
+            
+            // Add to in-memory list
+            _todos.Add(newTodo);
+            
+            // Save to file
+            AnsiConsole.MarkupLine("[dim]Saving task...[/]");
+            await _dataService.SaveTodosAsync(_todos);
+            
+            // Success feedback
+            AnsiConsole.MarkupLine("[green]✅ Task added successfully![/]");
+            AnsiConsole.MarkupLine($"[dim]Task: \"{newTodo.Description}\"[/]");
+            AnsiConsole.MarkupLine($"[dim]Status: {newTodo.State}[/]");
+            AnsiConsole.MarkupLine($"[dim]Total tasks: {_todos.Count}[/]");
+        }
+        catch (InvalidOperationException ex)
+        {
+            AnsiConsole.MarkupLine($"[red]Error saving task: {ex.Message}[/]");
+            AnsiConsole.MarkupLine("[yellow]The task was created but may not be saved to file.[/]");
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]Unexpected error: {ex.Message}[/]");
+            AnsiConsole.MarkupLine("[yellow]Please try again.[/]");
+        }
+        
+        AnsiConsole.WriteLine();
         AnsiConsole.MarkupLine("[dim]Press any key to continue...[/]");
         
         try
