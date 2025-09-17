@@ -478,14 +478,14 @@ internal class Program
     {
         AnsiConsole.MarkupLine("[red]🗑️ Delete Task[/]");
         AnsiConsole.WriteLine();
-        
+
         // Handle empty todo list case
         if (_todos.Count == 0)
         {
             AnsiConsole.MarkupLine("[dim]No tasks found. Add some tasks first to delete them![/]");
             AnsiConsole.WriteLine();
             AnsiConsole.MarkupLine("[dim]Press any key to continue...[/]");
-            
+
             try
             {
                 Console.ReadKey();
